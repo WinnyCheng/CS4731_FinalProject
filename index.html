@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>ccheng2_FinalProject</title>
+
+    <script id="vshader" type="x-shader/x-vertex">
+
+	attribute vec4 vPosition;
+	attribute vec4 vNormal;
+
+	uniform vec4 diffuseProduct, specularProduct, ambientProduct;
+	uniform vec4 lightPosition;
+	uniform float shininess;
+	uniform float limit;
+	uniform float flag;
+
+	uniform mat4 projectionMatrix;
+	uniform mat4 modelMatrix;
+	varying vec4 fColor;
+
+	attribute vec2 vTexCoord;
+    varying vec2 fTexCoord;
+    varying float flags;
+
+    varying vec3 refl;
+    varying vec3 refr;
+    varying float reflRefr;
+    uniform float reflectRefract;
+
+	void main() {
+	    vec3 pos = (modelMatrix * vPosition).xyz;   //Covert to eye coordinates
+	    vec3 L = normalize(lightPosition.xyz - pos);   //Calculate L
+	    vec3 V = normalize(-pos);   // Calculate V
+	    vec3 N = normalize(modelMatrix * vNormal).xyz;  //Convert normal to eye coordinates
+        vec3 R = (2.0 * dot(L, N) * N) - L;  //Calculate reflection vector
+
+        refl = reflect(pos, N);
+        refr = refract(pos, N, 0.5);
+
+        vec4 diffuse = vec4(0, 0, 0, 0);
+        vec4 specular = vec4(0, 0, 0, 0);
+        vec4 ambient = ambientProduct;
+
+        vec3 lightDir = vec3(0, 0, -1.0);
+
+        if(dot(L, -lightDir) > limit){
+            diffuse = diffuseProduct * dot(L, N);
+            specular = specularProduct * pow(max(dot(V, R), 0.0), shininess);
+        }
+
+		gl_Position = projectionMatrix * modelMatrix * vPosition;
+  		gl_PointSize = 10.0;
+
+  		if(flag == 1.0)
+  		    fColor = vec4(1.0, 1.0, 1.0, 1.0);
+        else if(flag == 3.0)
+            fColor = vec4(0.0, 0.0, 0.0, 1.0);
+        else
+            fColor = ambient + diffuse + specular;
+
+  		fColor.a = 1.0;
+
+  		fTexCoord = vTexCoord;
+  		flags = flag;
+  		reflRefr = reflectRefract;
+  	}
+	</script>
+
+    <script id="fshader" type="x-shader/x-fragment">
+	precision mediump float;
+
+	varying vec4 fColor;
+
+	varying vec2 fTexCoord;
+	varying float flags;
+    uniform sampler2D texture;
+
+    uniform samplerCube texMap;
+    varying vec3 refl;
+    varying vec3 refr;
+    varying float reflRefr;
+
+	void main()
+	{
+	    if(flags == 2.0)
+	        gl_FragColor = texture2D(texture, fTexCoord);
+	    else if(flags == 1.0)
+		    gl_FragColor = fColor;
+        else{
+            if(reflRefr == 1.0){
+                vec4 texColor = textureCube(texMap, refl);
+                gl_FragColor = fColor * texColor;
+            }
+            else if(reflRefr == 2.0){
+                 vec4 texColor = textureCube(texMap, refr);
+                 gl_FragColor = fColor * texColor;
+            }
+            else if(reflRefr == 3.0){
+                 vec4 texColor = textureCube(texMap, refr*refl);
+                 gl_FragColor = fColor * texColor;
+            }
+            else
+                gl_FragColor = fColor;
+        }
+  	}
+	</script>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/initShaders.js"></script>
+    <script src="lib/MV.js"></script>
+
+    <script src="global.js"></script>
+    <script src="model.js"></script>
+    <script src="draw.js"></script>
+    <script src="environment.js"></script>
+    <script src="texture.js"></script>
+    <script src="shadow.js"></script>
+    <script src="script.js"></script>
+
+</head>
+
+<body onload="main()">
+
+<div style="text-align: center">
+
+    <h1>Final Project I</h1>
+
+    <canvas id="webgl" width="800" height="600" style="background-color: black">
+        Please use a browser that supports the "canvas" tag.
+    </canvas>
+
+</div>
+
+</body>
+</html>
